@@ -1,0 +1,29 @@
+# Example project: a Nordic livery for the Scania S.
+# Build with:  euro-creator build examples/nordic/nordic.yaml
+
+mod:
+  name: Nordic Livery
+  author: olzzon
+  version: "1.0"
+  description: |
+    Blue Nordic paint job for the Scania S.
+  icon: art/skin_icon.png
+
+skin:
+  name: Nordic
+  price: 12000
+  unlock: 0
+  airbrush: true
+  icon: art/skin_icon.png
+
+vehicle: ../../vehicles/ets2/scania.s_2016.yaml
+
+textures:
+  main: art/nordic_main.png
+  accessories:
+    Sun Visor: art/nordic_visor.png
+
+output:
+  dir: dist
+  dds_format: dxt5
+  mipmaps: true

@@ -1,0 +1,22 @@
+# Template for a truck that comes from a mod -- e.g. a Scania 142 built in
+# Blender. 'path' must match the folder you used under def/vehicle/truck/,
+# and 'units' must match the cabin accessory units that truck's own def files
+# declare. euro-creator inspect drafts everything except those two.
+vehicle:
+  path: olzzon.scania142
+  name: Scania 142
+  game: ets2
+  type: truck
+  author: olzzon
+  mod: true
+  # Set to match the truckpaint shader flavour used on the painted materials:
+  # eut2.truckpaint.altuv -> true, plain eut2.truckpaint -> false.
+  alternate_uvset: false
+  separate_paintjobs: false
+  template_size: [4096, 4096]
+  cabins:
+    a:
+      name: Topline
+      units: [topline]
+  accessories:
+    Sun Visor: [sunshld.stock]

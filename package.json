@@ -1,0 +1,22 @@
+{
+  "name": "euro-creator",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Build ETS2/ATS paint job mods from a Blender truck and a painted texture",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "workspaces": ["packages/core", "packages/server", "packages/web"],
+  "scripts": {
+    "build": "npm run build -w @euro-creator/core && npm run build -w @euro-creator/server && npm run build -w @euro-creator/web",
+    "dev": "concurrently -n server,web -c cyan,magenta \"npm run dev -w @euro-creator/server\" \"npm run dev -w @euro-creator/web\"",
+    "serve": "npm run build && node packages/server/dist/main.js",
+    "test": "vitest run",
+    "typecheck": "tsc -b --force"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

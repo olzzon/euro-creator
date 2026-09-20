@@ -1,0 +1,23 @@
+{
+  "name": "@euro-creator/server",
+  "version": "0.2.0",
+  "type": "module",
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "tsc -b && node -e \"const f=require('fs');const c=(a,b)=>f.cpSync(a,b,{recursive:true,filter:s=>!s.includes('__pycache__')});c('src/blender','dist/blender');c('src/seeds','dist/seeds')\"",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@euro-creator/core": "0.2.0",
+    "@fastify/multipart": "^9.0.1",
+    "@fastify/static": "^8.0.3",
+    "fastify": "^5.2.0",
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2"
+  }
+}

@@ -1,0 +1,14 @@
+SiiNunit
+{
+mod_package: .package_name
+{
+	package_version: "1.0"
+	display_name: "Nordic Livery"
+	author: "olzzon"
+
+	category[]: "paint_job"
+
+	icon: "Mod_Manager_Image.jpg"
+	description_file: "Mod_Manager_Description.txt"
+}
+}
