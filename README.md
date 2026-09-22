@@ -30,7 +30,12 @@ verification — takes about **1.3 seconds**.
 | `packages/core` | Pure TypeScript: BC1/BC3 encoder, DDS, TOBJ, SII, TGA, zip read/write, the mod builder, the UV-template rasteriser, and mod verification. No HTTP, no filesystem. |
 | `packages/server` | Fastify API, job queue with SSE progress, workspace storage, and the Blender subprocess runner. |
 | `packages/web` | React + MobX single-page app, served by the API in production. |
-| `python/` | The original Python implementation. Kept as the reference the TypeScript port is tested against — the golden fixtures in `packages/core/test/fixtures` came from it. |
+
+The one piece of Python left is `packages/server/src/blender/extract.py`, and it
+stays: Blender's scripting API is Python, so anything that reads a `.blend`
+runs inside Blender. Everything else — including the whole original Python
+implementation this was ported from — is gone; it survives in git at `513ee77`
+and as the frozen fixtures described in `packages/core/test/fixtures/README.md`.
 
 **No SCS Conversion Tools.** They are Windows-only, and they are the reason the
 normal pipeline cannot run on a Mac. The DDS encoder here writes BC3 directly,
@@ -62,7 +67,7 @@ All optional; the defaults suit a dedicated Mac mini.
 | `EC_HOST` | `0.0.0.0` | Binds to every interface, because the point is reaching it from your LAN. |
 | `EC_PORT` | `5174` | |
 | `EC_WORKSPACE` | `~/euro-creator` | Uploads, trucks, skins and builds. |
-| `EC_BLENDER` | *(searched)* | Path to the executable. On macOS that is **inside** the `.app`: `/Applications/Blender 3.6/Blender.app/Contents/MacOS/Blender`. |
+| `EC_BLENDER` | *(searched)* | Path to the executable. On macOS that is **inside** the `.app`: `/Applications/Blender 3.6/Blender.app/Contents/MacOS/Blender`. Set it and it is authoritative — a wrong path is an error, never a silent fall back to some other Blender. |
 | `EC_MAX_UPLOAD_MB` | `1024` | A detailed truck's `.blend` gets large. |
 | `EC_KEEP_BUILDS` | `50` | Older builds are pruned; each 4K one is tens of MB. |
 | `EC_BLENDER_TIMEOUT_S` | `600` | |
@@ -215,13 +220,24 @@ npm run typecheck
 The tests cover:
 
 - the TOBJ header against bytes from shipped mods;
-- DDS output against golden files produced by the Python implementation, and
-  decoded back to check compression quality;
+- DDS output against frozen golden files, and decoded back to check
+  compression quality — see `packages/core/test/fixtures/README.md` for where
+  those bytes came from and why they are never regenerated;
 - the UV-dump binary format against a fixture written by Python's `struct`, so
   the cross-language contract with `blender/extract.py` cannot drift;
 - a full build asserting every TOBJ and every `paint_job_mask` resolves inside
   the packed archive;
-- the HTTP API end to end: upload → truck → skin → build → download → verify.
+- the HTTP API end to end: upload → truck → skin → build → download → verify;
+- the Blender half against a real Blender, from a synthetic `.blend` built by
+  `packages/server/test/fixtures/make_truck.py`: SCS root, parts, variants,
+  which materials are truckpaint, which UV layer `.altuv` selects, and the
+  dump surviving the trip into TypeScript. Skipped when no Blender is
+  installed, so the suite still runs on a machine that only builds skins.
+
+Because that fixture is built without SCS Blender Tools, those tests also cover
+the fallback that reads SCS data straight out of the `.blend`'s ID properties —
+the path taken on any Blender newer than 3.6, where the addon cannot load. It
+is how the import was verified here, on Blender 5.2.
 
 ### Where to extend
 

@@ -6,12 +6,9 @@ dist/
 npm-debug.log*
 yarn-error.log*
 
-# Python (reference implementation under python/)
+# Python bytecode from the Blender helper script
 __pycache__/
 *.py[cod]
-*.egg-info/
-.venv/
-.pytest_cache/
 
 # Environment and editors
 .env
@@ -25,4 +22,3 @@ __pycache__/
 *.scs
 templates/
 workspace/
-python/examples/**/dist/

@@ -87,8 +87,11 @@ export async function createApp(workspace: Workspace, config: Config): Promise<F
 function registerSystemRoutes(app: FastifyInstance, workspace: Workspace, config: Config): void {
   app.get("/api/health", async () => ({ ok: true }));
 
-  app.get("/api/system", async () => {
-    const blender = await checkBlender(config.blenderPath);
+  app.get<{ Querystring: { refresh?: string } }>("/api/system", async (request) => {
+    // ?refresh=1 re-probes for Blender, for right after installing it.
+    const blender = await checkBlender(config.blenderPath, {
+      fresh: request.query.refresh === "1",
+    });
     return {
       workspace: config.workspace,
       keepBuilds: config.keepBuilds,

@@ -1,7 +1,14 @@
 /**
- * The TypeScript port is checked against byte-exact output captured from the
- * Python implementation that was verified first. Fixtures live in
- * test/fixtures and were produced by python/ -- see README.
+ * Regression tests against frozen, byte-exact output.
+ *
+ * The fixtures in test/fixtures were captured from a Python implementation
+ * that was written and verified first; see fixtures/README.md for exactly how
+ * each one was produced. That implementation is gone, which is the point: the
+ * bytes are the contract now, and they cannot be regenerated from whatever the
+ * encoder happens to do today.
+ *
+ * The TOBJ header is anchored twice over -- against the fixture, and against
+ * the literal byte pattern shipped by SCS' own paint job textures.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -16,7 +23,13 @@ import type { RgbaImage } from "../src/image.js";
 const fixture = (name: string) =>
   readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)));
 
-/** The same deterministic gradient the Python fixtures were generated from. */
+/**
+ * The deterministic gradient the DDS fixtures were generated from.
+ *
+ * A smooth two-channel ramp with a hard-edged block in the middle and a
+ * graded alpha: between them they exercise the endpoint fit, the flat-block
+ * path and the BC3 alpha ramp, which is where a block compressor goes wrong.
+ */
 function gradient(size = 64): RgbaImage {
   const data = new Uint8Array(size * size * 4);
   for (let y = 0; y < size; y += 1) {
@@ -37,7 +50,29 @@ function gradient(size = 64): RgbaImage {
   return { width: size, height: size, data };
 }
 
+/**
+ * The 40 bytes preceding the path-length field, as emitted by SCS' own paint
+ * job textures and by every mod built with Paint Job Packer. If this ever
+ * changes, the game stops loading the texture.
+ */
+const SHIPPED_TOBJ_PREFIX =
+  "010ab170000000000000000000000000000000000100020002000303030002020001000000010000";
+
 describe("TOBJ matches the reference byte for byte", () => {
+  it("emits the byte pattern shipped by SCS' own paint job textures", () => {
+    const data = buildTobj("/vehicle/truck/upgrade/paintjob/Nordic/Scania S/Cabin.dds");
+    expect(data.subarray(0, 40).toString("hex")).toBe(SHIPPED_TOBJ_PREFIX);
+  });
+
+  it("changes only the three addressing bytes when clamped", () => {
+    const repeat = buildTobj("/a/b.dds");
+    const clamp = buildTobj("/a/b.dds", { clamp: true });
+    expect(clamp.subarray(0x1a, 0x1d)).toEqual(Buffer.from([0, 0, 0]));
+    expect(repeat.subarray(0x1a, 0x1d)).toEqual(Buffer.from([3, 3, 3]));
+    expect(repeat.subarray(0, 0x1a)).toEqual(clamp.subarray(0, 0x1a));
+    expect(repeat.subarray(0x1d)).toEqual(clamp.subarray(0x1d));
+  });
+
   it("icon tobj (clamped)", () => {
     expect(buildTobj("/material/ui/accessory/Nordic Icon.dds", { clamp: true })).toEqual(
       fixture("icon.tobj"),

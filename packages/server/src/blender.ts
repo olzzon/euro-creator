@@ -50,17 +50,29 @@ async function isExecutable(path: string): Promise<boolean> {
   }
 }
 
+const MACOS_HINT =
+  "on macOS the executable is inside the .app, e.g. " +
+  "'/Applications/Blender 3.6/Blender.app/Contents/MacOS/Blender'";
+
 export async function findBlender(explicit?: string | null): Promise<string> {
-  const candidates = [explicit, process.env.EC_BLENDER, ...CANDIDATES].filter(
-    (value): value is string => typeof value === "string" && value.length > 0,
-  );
-  for (const candidate of candidates) {
+  // An explicitly configured path is never fallen back from. Quietly using a
+  // different Blender than the one that was asked for is how you end up on
+  // 4.x or 5.x, where SCS Blender Tools cannot load, without knowing why.
+  const configured = explicit ?? process.env.EC_BLENDER ?? null;
+  if (configured !== null && configured !== "") {
+    if (await isExecutable(configured)) return configured;
+    throw new BlenderError(
+      `Blender was configured as '${configured}', but nothing executable is there. ` +
+        `Fix the path or unset EC_BLENDER to search the usual locations -- ${MACOS_HINT}.`,
+    );
+  }
+
+  for (const candidate of CANDIDATES) {
     if (await isExecutable(candidate)) return candidate;
   }
   throw new BlenderError(
     "Blender not found. Install Blender 3.6 LTS (the newest release SCS Blender Tools " +
-      "supports) on this machine, then set EC_BLENDER to its executable -- on macOS that is " +
-      "inside the .app, e.g. '/Applications/Blender 3.6/Blender.app/Contents/MacOS/Blender'.",
+      `supports) on this machine, then set EC_BLENDER to its executable -- ${MACOS_HINT}.`,
   );
 }
 
@@ -72,7 +84,32 @@ export interface BlenderStatus {
   readonly message: string;
 }
 
-export async function checkBlender(explicit?: string | null): Promise<BlenderStatus> {
+/**
+ * Cached result of the last probe.
+ *
+ * Probing means spawning `blender --version`, and the UI asks for system
+ * status on every page load. Blender does not appear or change version while
+ * the service is running, so a short TTL turns a per-request subprocess into
+ * one per minute. `checkBlender(path, { fresh: true })` forces a re-probe for
+ * the case that matters: someone has just installed it.
+ */
+let cachedStatus: { key: string; at: number; status: BlenderStatus } | null = null;
+const STATUS_TTL_MS = 60_000;
+
+export async function checkBlender(
+  explicit?: string | null,
+  options: { fresh?: boolean } = {},
+): Promise<BlenderStatus> {
+  const key = explicit ?? "";
+  if (!options.fresh && cachedStatus && cachedStatus.key === key) {
+    if (Date.now() - cachedStatus.at < STATUS_TTL_MS) return cachedStatus.status;
+  }
+  const status = await probeBlender(explicit);
+  cachedStatus = { key, at: Date.now(), status };
+  return status;
+}
+
+async function probeBlender(explicit?: string | null): Promise<BlenderStatus> {
   let path: string;
   try {
     path = await findBlender(explicit);
@@ -100,9 +137,16 @@ export async function checkBlender(explicit?: string | null): Promise<BlenderSta
   return { available: true, path, version, supported, message };
 }
 
+/**
+ * Probing the version means a cold Blender start, which on a machine that is
+ * also building a mod can take far longer than it does idle. Generous, because
+ * the cost of being wrong is silently reporting "unknown version".
+ */
+const VERSION_PROBE_TIMEOUT_MS = 120_000;
+
 export async function blenderVersion(path: string): Promise<number[] | null> {
   try {
-    const { stdout } = await run(path, ["--version"], 30_000);
+    const { stdout } = await run(path, ["--version"], VERSION_PROBE_TIMEOUT_MS);
     const match = /Blender\s+(\d+)\.(\d+)/.exec(stdout);
     return match ? [Number(match[1]), Number(match[2])] : null;
   } catch {
